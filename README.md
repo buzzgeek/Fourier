@@ -19,3 +19,4 @@ Fourier - Concepts
 "But what is the Fourier Transform? A visual introduction" by 3Blue1Brown -> https://www.youtube.com/watch?v=spUNpyF58BY&t=574
 "Coding Challenge #125: Fourier Series" by The Coding Train -> https://www.youtube.com/watch?v=Mm2eYfj0SgA&t=1248s
 
+Note: The code is messy atm just like my thoughts / over time things will get clearer ;) - this is pure art
