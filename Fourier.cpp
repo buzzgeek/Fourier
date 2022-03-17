@@ -47,7 +47,8 @@ const char* fourier::strategies[] = { "integers",
 										"\"ballanced\" primes",
 										"\"emirp\" primes",
 										"\"euler\'s irregular\" prime",
-										"custom", };
+										"custom",
+										"square",};
 										//"inv. custom",}; broken
 
 const char* fourier::curves[] = { "sin(x)",
@@ -74,7 +75,12 @@ ScrollingBuffer fourier::tracer = { 100000 };
 ScrollingBuffer fourier::result = { MAX_NODES };
 ScrollingBuffer fourier::dataAnalog[3] = { {MAX_PLOT}, {MAX_PLOT}, };
 ScrollingBuffer fourier::dataModulated = { MAX_PLOT };
-ScrollingBuffer fourier::demodulator[3] = { {MAX_PLOT}, {MAX_PLOT}, {MAX_PLOT}, };
+ScrollingBuffer fourier::demodulator[NUM_DEMODULATOR_GRAPHS] = { {MAX_PLOT}, 
+	{MAX_PLOT}, 
+	{MAX_PLOT}, 
+	{MAX_PLOT}, 
+	{MAX_PLOT}, 
+	{MAX_PLOT}, };
 
 fourier::fourier()
 {
@@ -245,7 +251,7 @@ void fourier::DrawCanvas()
 
 	switch (concept_current) {
 	case 0: // fourier series
-		waveletGenerator.DrawWavelets(draw_list, (double)time, circle_pos, showCircles, showEdges);
+		waveletGenerator.DrawWavelets(draw_list, time, circle_pos, showCircles, showEdges);
 		waveletGenerator.DrawTraceLine(draw_list, circle_pos, showEdges);
 
 		finalX = -waveletGenerator.GetFinalTip().x / waveletGenerator.GetNormalizer();
@@ -260,7 +266,7 @@ void fourier::DrawCanvas()
 		break;
 	}
 
-	time += PI / timeChangeRate;
+	time += static_cast<float>(PI / timeChangeRate);
 	if (time >= TWO_PI)
 		time = 0.0f;
 	if (concept_current < 2)
@@ -301,7 +307,7 @@ void fourier::DrawCanvas()
 
 void fourier::DrawProperties()
 {
-	static double f = 0.0f;
+	static float f = 0.0f;
 	static int counter = 0;
 	bool updateRequired = false;
 
@@ -348,13 +354,15 @@ void fourier::DrawProperties()
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 	ImGui::Text("Time %.3f", time);
 	ImGui::End();
+
 	if (updateRequired)
 	{
 		Clear();
 		waveletGenerator.Clear();
-		demodulator[0].Erase();
-		demodulator[1].Erase();
-		demodulator[2].Erase();
+		for (int i = 0; i < NUM_DEMODULATOR_GRAPHS; i++)
+		{
+			demodulator[i].Erase();
+		}
 		timePlot = 0.0f;
 		waveletGenerator.SetRadius(radiusCircle);
 		Setup();
@@ -365,8 +373,6 @@ void fourier::DrawProperties()
 
 		if(concept_current != 2)
 			dataAnalog[2].Erase(); // holds temporary data for further analysis that needs to be removed now
-
-
 
 		log.AddLog("[%.1f] - strategy: %d - nodes: %d  - slomo rate: %.1f - radius: %.1f - alternate series: %s\n",
 			ImGui::GetTime(), strategy_current, numNodes, timeChangeRate, radiusCircle, isAlternateSeries ? "true" : "false");
@@ -505,12 +511,15 @@ void fourier::DrawLog(bool& open)
 void fourier::DrawPlotsDemodulate(bool& open)
 {
 	ImGui::Begin("DigitalPlots", &open);
-	static bool showAnalog[3] = { true, true, true };
+	static bool showAnalog[NUM_DEMODULATOR_GRAPHS] = { true, true, true, true, true, true };
 	float x = 0.0f;
 	char label[32];
 	ImGui::Checkbox("cos(x)", &showAnalog[0]); ImGui::SameLine();
 	ImGui::Checkbox("sin(x)", &showAnalog[1]); ImGui::SameLine();
-	ImGui::Checkbox("magnitude", &showAnalog[2]);
+	ImGui::Checkbox("magnitude", &showAnalog[2]); ImGui::SameLine();
+	ImGui::Checkbox("-magnitude", &showAnalog[3]); ImGui::SameLine();
+	ImGui::Checkbox("sin(x)+cos(x)", &showAnalog[4]); ImGui::SameLine();
+	ImGui::Checkbox("sin(x)-cos(x)", &showAnalog[5]);
 
 	float range = TWO_PI;
 	float minY = 100.0f;
@@ -518,8 +527,8 @@ void fourier::DrawPlotsDemodulate(bool& open)
 
 	finalY = 0.0f;
 	finalX = 0.0f;
-	double tmp = 0.0f;
-	double rDiv2 = 1.0f;
+	float tmp = 0.0f;
+	float rDiv2 = 1.0f;
 
 	for (int i = 0; i < dataModulated.MaxSize; i++) {
 		switch (curve_current) {
@@ -559,7 +568,7 @@ void fourier::DrawPlotsDemodulate(bool& open)
 			for (int i = 1; i < (numNodes + 1); i++)
 			{
 				tmp = (i * 2.0f);
-				finalY += (4 * sin(x * tmp)) / (PI * tmp);
+				finalY += static_cast<float>((4 * sin(x * tmp)) / (PI * tmp));
 			}
 
 			break;
@@ -568,7 +577,7 @@ void fourier::DrawPlotsDemodulate(bool& open)
 			for (int i = 1; i < (numNodes + 1); i++)
 			{
 				tmp = (i * 2.0f) - 1.0f;
-				finalY += (4 * sin(x * tmp)) / (PI * tmp);
+				finalY += static_cast<float>((4 * sin(x * tmp)) / (PI * tmp));
 			}
 			break;
 		case 12: // square
@@ -613,7 +622,7 @@ void fourier::DrawPlotsDemodulate(bool& open)
 			finalY = 0.0f;
 			for (int i = 1; i < (numNodes + 1); i++)
 			{
-				tmp = i;
+				tmp = static_cast<float>(i);
 				finalY += i % 2 ? sin(x * tmp) : -sin(x * tmp);
 			}
 			break;
@@ -621,7 +630,7 @@ void fourier::DrawPlotsDemodulate(bool& open)
 			finalY = 0.0f;
 			for (int i = 1; i < (numNodes + 1); i++)
 			{
-				tmp = i;
+				tmp = static_cast<float>(i);
 				finalY += !(i % 2) ? sin(x * tmp) : -sin(x * tmp);
 			}
 			break;
@@ -675,7 +684,25 @@ void fourier::DrawPlotsDemodulate(bool& open)
 		{
 			strcpy_s(label, 32, "magnitude");
 			if (demodulator[2].Data.size() > 0)
-				ImPlot::PlotLine(label, &demodulator[2].Data[0].x, &demodulator[2].Data[0].y, demodulator[1].Data.size(), demodulator[2].Offset, 2 * sizeof(float));
+				ImPlot::PlotLine(label, &demodulator[2].Data[0].x, &demodulator[2].Data[0].y, demodulator[2].Data.size(), demodulator[2].Offset, 2 * sizeof(float));
+		}
+		if (showAnalog[3])
+		{
+			strcpy_s(label, 32, "-magnitude");
+			if (demodulator[3].Data.size() > 0)
+				ImPlot::PlotLine(label, &demodulator[3].Data[0].x, &demodulator[3].Data[0].y, demodulator[3].Data.size(), demodulator[3].Offset, 2 * sizeof(float));
+		}
+		if (showAnalog[4])
+		{
+			strcpy_s(label, 32, "sin(x)+cos(x)");
+			if (demodulator[4].Data.size() > 0)
+				ImPlot::PlotLine(label, &demodulator[4].Data[0].x, &demodulator[4].Data[0].y, demodulator[4].Data.size(), demodulator[4].Offset, 2 * sizeof(float));
+		}
+		if (showAnalog[5])
+		{
+			strcpy_s(label, 32, "sin(x)-cos(x)");
+			if (demodulator[5].Data.size() > 0)
+				ImPlot::PlotLine(label, &demodulator[5].Data[0].x, &demodulator[5].Data[0].y, demodulator[5].Data.size(), demodulator[5].Offset, 2 * sizeof(float));
 		}
 		ImPlot::EndPlot();
 	}
@@ -688,7 +715,7 @@ void fourier::DrawPlotsTransformScrolling(bool& open) {
 	static bool paused = false;
 	static bool showAnalog[2] = { true, true };
 	static bool flipSign = false;
-	static double prevX = 1.0f;
+	static float prevX = 1.0f;
 
 	char label[32];
 	ImGui::Checkbox("cos(x)", &showAnalog[0]);  ImGui::SameLine();
@@ -696,12 +723,12 @@ void fourier::DrawPlotsTransformScrolling(bool& open) {
 
 	switch (curve_current) {
 	case 0: // cos(x)
-		finalY = (float)sin(timePlot);
-		finalX = (float)cos(timePlot);
+		finalY = sin(timePlot);
+		finalX = cos(timePlot);
 		break;
 	case 1: // cos(x)
-		finalY = (float)cos(timePlot);
-		finalX = (float)-sin(timePlot);
+		finalY = cos(timePlot);
+		finalX = -sin(timePlot);
 		break;
 	case 2: //sin(x)^2 + cos(x)
 		finalY = (sin(timePlot) * sin(timePlot)) + cos(timePlot);
@@ -737,15 +764,12 @@ void fourier::DrawPlotsTransformScrolling(bool& open) {
 		break;
 	}
 
-	//std::complex<double> comp = sqrt(std::complex<double>(1.0f - (finalY * finalY), 0));
-	//log.AddLog("%.2f + i%.2f\n", comp.real(), comp.imag());
-
 	if (!paused) {
-		timePlot += (PI / plotTimeChangeRate); //ImGui::GetIO().DeltaTime;
+		timePlot += static_cast<float>(PI / plotTimeChangeRate); //ImGui::GetIO().DeltaTime;
 		if (showAnalog[0])
-			dataAnalog[0].AddPoint((float)(-timePlot), (float)finalX);
+			dataAnalog[0].AddPoint(-timePlot, finalX);
 		if (showAnalog[1])
-			dataAnalog[1].AddPoint((float)(-timePlot), (float)finalY);
+			dataAnalog[1].AddPoint(-timePlot, finalY);
 	}
 
 	if (ImPlot::BeginPlot("##Digital", ImGui::GetContentRegionAvail())) {
@@ -774,16 +798,16 @@ void fourier::DrawPlots(bool& p_open) {
 	ImGui::Checkbox("sin(x)", &showAnalog[1]);
 
 	if (!paused) {
-		timePlot += (PI / plotTimeChangeRate); //ImGui::GetIO().DeltaTime;
+		timePlot += static_cast<float>(PI / plotTimeChangeRate); //ImGui::GetIO().DeltaTime;
 		if (showAnalog[0])
-			dataAnalog[0].AddPoint((float)(-timePlot), (float)finalX);
+			dataAnalog[0].AddPoint(-timePlot, finalX);
 		if (showAnalog[1])
-			dataAnalog[1].AddPoint((float)(-timePlot), (float)finalY);
+			dataAnalog[1].AddPoint(-timePlot, finalY);
 	}
 
 	if ((concept_current != 2) && !(strategy_current == 10 && concept_current == 0))
 	{
-		dataAnalog[2].AddPoint((float)(-timePlot), (float)finalX);
+		dataAnalog[2].AddPoint(-timePlot, finalX);
 		log.AddLog("adding %.3f:%.3f to cache\n", timePlot, finalX);
 	}
 
@@ -1025,9 +1049,18 @@ void fourier::SetupMulitpleWavelets()
 		{
 			for (int i = 0; i < result.Data.size(); i++)
 			{
-				waveletGenerator.AddWavelet((result.Data[i].x * radiusCircle), (result.Data[i].y * radiusCircle));
+				waveletGenerator.AddWavelet(true, (result.Data[i].x * radiusCircle), (result.Data[i].y * radiusCircle));
 			}
 		}
+		break;
+	case 11: // Square
+		waveletGenerator.AddWavelet(false, 4.0f, -0.155f);
+		waveletGenerator.AddWavelet(false, 8.0f, .05f);
+		waveletGenerator.AddWavelet(false, 12.0f, -0.023f);
+		waveletGenerator.AddWavelet(false, 16.0f, .014f);
+		waveletGenerator.AddWavelet(false, 20.0f, -0.009f);
+		waveletGenerator.AddWavelet(false, 24.0f, +0.006f);
+
 		break;
 	}
 }
@@ -1051,7 +1084,7 @@ void fourier::Setup()
 		SetupSingleWavelet();
 }
 
-WaveletGenerator::WaveletGenerator(double radius)
+WaveletGenerator::WaveletGenerator(float radius)
 {
 	this->radius = radius;
 	this->normalizer = 0;
@@ -1083,11 +1116,11 @@ void WaveletGenerator::Clear()
 
 
 
-void WaveletGenerator::Rotate(int i, double t)
+void WaveletGenerator::Rotate(int i, float t)
 {
 	// TODO: need to see if I can switch sin and cos somehow in other words alternate back an forth on x only or y only!?! dunno if that makes sense
 	// the idea is that the series contains a summ of cosine as well as a sum of sine tokens. This seems to be relevant for the square problem.
-	waveletQueue[i]->rotation = ImVec2((float)(waveletQueue[i]->radius * (double)cos(-t * waveletQueue[i]->index)), (float)(waveletQueue[i]->radius * (double)sin(-t * waveletQueue[i]->index)));
+	waveletQueue[i]->rotation = ImVec2(waveletQueue[i]->radius * cos(-t * waveletQueue[i]->index), waveletQueue[i]->radius * sin(-t * waveletQueue[i]->index));
 	
 	if (i > 0)
 		waveletQueue[i]->tail = ImVec2(waveletQueue[i - 1]->tip.x, waveletQueue[i - 1]->tip.y);
@@ -1100,15 +1133,15 @@ void WaveletGenerator::DrawWavelet(ExampleAppLog& log,
 	float& plotTimeChangeRate,
 	int index,
 	ScrollingBuffer& curve,
-	ScrollingBuffer* output,
+	ScrollingBuffer* demodulator,
 	ScrollingBuffer& result,
 	int numOfTimes,
 	ImVec2 origin,
 	bool drawCircles,
 	bool drawEdges)
 {
-	double factor = 1.0f;
-	double stepFrequency = (numOfTimes * TWO_PI / plotTimeChangeRate);
+	float factor = 1.0f;
+	float stepFrequency = (numOfTimes * TWO_PI / plotTimeChangeRate);
 	static bool isPositive = false;
 
 	this->maxRange = numOfTimes + 1.0f;
@@ -1117,8 +1150,8 @@ void WaveletGenerator::DrawWavelet(ExampleAppLog& log,
 	waveletQueue[index]->totX = 0.0f;
 	waveletQueue[index]->totY = 0.0f;
 
-	double rotation = 0.0f;
-	double rotationStep = (TWO_PI * this->range) / curve.Data.size();
+	float rotation = 0.0f;
+	float rotationStep = (TWO_PI * this->range) / curve.Data.size();
 	ImVec2 cog;
 
 	for (int i = 0; i < curve.Data.Size; i++)
@@ -1127,16 +1160,16 @@ void WaveletGenerator::DrawWavelet(ExampleAppLog& log,
 		rotation += rotationStep;
 		Rotate(index, -rotation);
 
-		ImVec2 center = ImVec2((float)(waveletQueue[index]->tail.x + origin.x), (float)(waveletQueue[index]->tail.y + origin.y));
-		ImVec2 tail = ImVec2((float)(waveletQueue[index]->tip.x + origin.x), (float)(waveletQueue[index]->tip.y + origin.y));
-		ImVec2 tip = ImVec2((float)((waveletQueue[index]->tip.x * factor) + origin.x + waveletQueue[index]->tip.x), (float)((waveletQueue[index]->tip.y * factor) + origin.y + waveletQueue[index]->tip.y));
+		ImVec2 center = ImVec2(waveletQueue[index]->tail.x + origin.x, waveletQueue[index]->tail.y + origin.y);
+		ImVec2 tail = ImVec2(waveletQueue[index]->tip.x + origin.x, waveletQueue[index]->tip.y + origin.y);
+		ImVec2 tip = ImVec2((waveletQueue[index]->tip.x * factor) + origin.x + waveletQueue[index]->tip.x, (waveletQueue[index]->tip.y * factor) + origin.y + waveletQueue[index]->tip.y);
 
 		waveletQueue[index]->totX += waveletQueue[index]->tip.x * factor;
 		waveletQueue[index]->totY += waveletQueue[index]->tip.y * factor;
 		waveletQueue[index]->numCoords++;
 
-		waveletQueue[index]->pog = ImVec2((float)(waveletQueue[index]->totX / (double)waveletQueue[index]->numCoords),
-			(float)(waveletQueue[index]->totY / (double)waveletQueue[index]->numCoords));
+		waveletQueue[index]->pog = ImVec2(waveletQueue[index]->totX / static_cast<float>(waveletQueue[index]->numCoords),
+			waveletQueue[index]->totY / static_cast<float>(waveletQueue[index]->numCoords));
 
 		cog = ImVec2(waveletQueue[index]->pog.x, waveletQueue[index]->pog.y);
 		if (drawCircles)
@@ -1156,21 +1189,24 @@ void WaveletGenerator::DrawWavelet(ExampleAppLog& log,
 
 	// just use the real part of an imaginary number which happens to be the y axis here
 	// so the x axis represents the imaginary part, weired why it is not the other way arround
-	double sinX = 2.0f * cog.y / waveletQueue[index]->radius;
-	double cosX = 2.0f * cog.x / waveletQueue[index]->radius;
-	double magnitude = sqrt((4 * cog.x * cog.x) + (4 * cog.y * cog.y)) / waveletQueue[index]->radius;
+	float sinX = 2.0f * cog.y / waveletQueue[index]->radius;
+	float cosX = 2.0f * cog.x / waveletQueue[index]->radius;
+	float magnitude = sqrt((4 * cog.x * cog.x) + (4 * cog.y * cog.y)) / waveletQueue[index]->radius;
 
-	output[0].AddPoint(this->range, (float)cosX);
-	output[1].AddPoint((float)this->range, (float)sinX);
-	output[2].AddPoint((float)this->range, (float)magnitude);
+	demodulator[0].AddPoint(this->range, cosX);
+	demodulator[1].AddPoint(this->range, sinX);
+	demodulator[2].AddPoint(this->range, magnitude);
+	demodulator[3].AddPoint(this->range, -magnitude);
+	demodulator[4].AddPoint(this->range, sinX + cosX);
+	demodulator[5].AddPoint(this->range, sinX - cosX);
 
-	double range = (double)(((int)(this->range * 100.0f) / 10)) / 10.0f;
-	double amplitude = (double)((int)((sinX * 1000.0f) / 10) / 100.0f);
+	float range = static_cast<float>((static_cast<int>(this->range * 100.0f) / 10)) / 10.0f;
+	float amplitude = static_cast<float>(static_cast<int>((sinX * 1000.0f) / 10) / 100.0f);
 	if ((!isPositive && cosX >= 0.0f) || (isPositive && cosX < 0.0f))
 	{
 		if (range > 0.33f && abs(amplitude) >= 0.01f) {
 			log.AddLog("pos:[%.4f] - cosx:[%.4f] - amplitude:[%.4f] - mag:[%.4f]\n", range, cosX, amplitude, magnitude);
-			result.AddPoint((float)range, (float)amplitude);
+			result.AddPoint(range, amplitude);
 		}
 		isPositive = !isPositive;
 	}
@@ -1178,45 +1214,45 @@ void WaveletGenerator::DrawWavelet(ExampleAppLog& log,
 	this->range += stepFrequency;
 }
 
-void WaveletGenerator::DrawWavelet(ImDrawList* draw_list, int index, double t, double factor, ImVec2 origin, bool drawCircles, bool drawEdges)
+void WaveletGenerator::DrawWavelet(ImDrawList* draw_list, int index, float t, float factor, ImVec2 origin, bool drawCircles, bool drawEdges)
 {
 	Rotate(index, t);
-	ImVec2 center = ImVec2((float)(waveletQueue[index]->tail.x + origin.x), (float)(waveletQueue[index]->tail.y + origin.y));
-	ImVec2 tail = ImVec2((float)(waveletQueue[index]->tip.x + origin.x), (float)(waveletQueue[index]->tip.y + origin.y));
-	ImVec2 tip = ImVec2((float)((waveletQueue[index]->tip.x * factor) + origin.x + waveletQueue[index]->tip.x), (float)((waveletQueue[index]->tip.y * factor) + origin.y + waveletQueue[index]->tip.y));
+	ImVec2 center = ImVec2(waveletQueue[index]->tail.x + origin.x, waveletQueue[index]->tail.y + origin.y);
+	ImVec2 tail = ImVec2((waveletQueue[index]->tip.x + origin.x), (waveletQueue[index]->tip.y + origin.y));
+	ImVec2 tip = ImVec2(((waveletQueue[index]->tip.x * factor) + origin.x + waveletQueue[index]->tip.x), ((waveletQueue[index]->tip.y * factor) + origin.y + waveletQueue[index]->tip.y));
 
 
 	waveletQueue[index]->totX += waveletQueue[index]->tip.x * factor;
 	waveletQueue[index]->totY += waveletQueue[index]->tip.y * factor;
 	waveletQueue[index]->numCoords++;
 
-	waveletQueue[index]->pog = ImVec2((float)(waveletQueue[index]->totX / (float)waveletQueue[index]->numCoords),
-		(float)(waveletQueue[index]->totY / (double)waveletQueue[index]->numCoords));
+	waveletQueue[index]->pog = ImVec2((waveletQueue[index]->totX / waveletQueue[index]->numCoords),
+		(waveletQueue[index]->totY / static_cast<float>(waveletQueue[index]->numCoords)));
 
-	waveletQueue[index]->tip = ImVec2((float)(waveletQueue[index]->tip.x * factor + waveletQueue[index]->tip.x), (float)(waveletQueue[index]->tip.y * factor + waveletQueue[index]->tip.y));
+	waveletQueue[index]->tip = ImVec2((waveletQueue[index]->tip.x * factor + waveletQueue[index]->tip.x), (waveletQueue[index]->tip.y * factor + waveletQueue[index]->tip.y));
 
 	if (drawCircles)
 	{
-		draw_list->AddCircle(center, (float)abs(waveletQueue[index]->radius), waveletQueue[index]->color, 0, waveletQueue[index]->thikness);
-		draw_list->AddCircle(tail, (float)abs(waveletQueue[index]->radius), waveletQueue[index]->color, 0, waveletQueue[index]->thikness);
+		draw_list->AddCircle(center, abs(waveletQueue[index]->radius), waveletQueue[index]->color, 0, waveletQueue[index]->thikness);
+		draw_list->AddCircle(tail, abs(waveletQueue[index]->radius), waveletQueue[index]->color, 0, waveletQueue[index]->thikness);
 	}
 
 	if (drawEdges)
 		draw_list->AddLine(tail, tip, waveletQueue[index]->color, waveletQueue[index]->thikness);
 }
 
-void WaveletGenerator::DrawWavelet(ImDrawList* draw_list, int index, double t, ImVec2 origin, bool drawCircles, bool drawEdges)
+void WaveletGenerator::DrawWavelet(ImDrawList* draw_list, int index, float t, ImVec2 origin, bool drawCircles, bool drawEdges)
 {
 	Rotate(index, t);
 	ImVec2 tail = ImVec2(waveletQueue[index]->tail.x + origin.x, waveletQueue[index]->tail.y + origin.y);
 	ImVec2 tip = ImVec2(waveletQueue[index]->tip.x + origin.x, waveletQueue[index]->tip.y + origin.y);
 	if (drawCircles)
-		draw_list->AddCircle(tail, (float)abs(waveletQueue[index]->radius), waveletQueue[index]->color, 0, waveletQueue[index]->thikness);
+		draw_list->AddCircle(tail, abs(waveletQueue[index]->radius), waveletQueue[index]->color, 0, waveletQueue[index]->thikness);
 	if (drawEdges)
 		draw_list->AddLine(tail, tip, waveletQueue[index]->color, waveletQueue[index]->thikness);
 }
 
-void WaveletGenerator::DrawWavelets(ImDrawList* draw_list, double t, ImVec2 origin, bool drawCircles, bool drawEdges)
+void WaveletGenerator::DrawWavelets(ImDrawList* draw_list, float t, ImVec2 origin, bool drawCircles, bool drawEdges)
 {
 	for (int i = 0; i < waveletQueue.size(); i++)
 	{
@@ -1224,12 +1260,12 @@ void WaveletGenerator::DrawWavelets(ImDrawList* draw_list, double t, ImVec2 orig
 	}
 }
 
-void WaveletGenerator::DrawTraceLine(ImDrawList* draw_list, ImVec2 origin, bool drawEdges, double length, ImU32 color, float thickness)
+void WaveletGenerator::DrawTraceLine(ImDrawList* draw_list, ImVec2 origin, bool drawEdges, float length, ImU32 color, float thickness)
 {
 	finalTip = waveletQueue.size() > 0 ? waveletQueue[waveletQueue.size() - 1]->tip : ImVec2(0.0f, 0.0f);
 	if (!drawEdges) return;
 	ImVec2 ftip = ImVec2(finalTip.x + origin.x, finalTip.y + origin.y);
-	draw_list->AddLine(ftip, ImVec2((float)(ftip.x + length), (float)(ftip.y)), color, thickness);
+	draw_list->AddLine(ftip, ImVec2((ftip.x + length), (ftip.y)), color, thickness);
 }
 
 ImVec2 WaveletGenerator::GetFinalTip()
@@ -1247,7 +1283,7 @@ float WaveletGenerator::GetNormalizer()
 	return normalizer;
 }
 
-void WaveletGenerator::SetRadius(double radius)
+void WaveletGenerator::SetRadius(float radius)
 {
 	if (radius > 2.0f)
 	{
@@ -1255,9 +1291,7 @@ void WaveletGenerator::SetRadius(double radius)
 	}
 }
 
-
-
-void WaveletGenerator::AddWavelet(double frequency, double magnitude, ImU32 color, float thickness)
+void WaveletGenerator::AddWavelet(bool useSine, float frequency, float magnitude, ImU32 color, float thickness)
 {
 	Wavelet* wavelet = new Wavelet();
 	wavelet->color = color;
@@ -1269,7 +1303,7 @@ void WaveletGenerator::AddWavelet(double frequency, double magnitude, ImU32 colo
 	wavelet->totX = 0;
 	wavelet->totY = 0;
 
-	wavelet->index = frequency * (4 / PI);
+	wavelet->index = static_cast<float>(frequency * (4 / PI));
 	wavelet->radius = magnitude;
 	normalizer += abs(wavelet->radius);
 
@@ -1282,7 +1316,7 @@ void WaveletGenerator::AddWavelet(double frequency, double magnitude, ImU32 colo
 void WaveletGenerator::AddWavelet(int index, ImU32 color, float thickness)
 {
 	Wavelet* wavelet = new Wavelet();
-	wavelet->index = index;
+	wavelet->index = static_cast<float>(index);
 	wavelet->color = color;
 	wavelet->thikness = thickness;
 	wavelet->min = ImVec2(numeric_limits<float>::max(), numeric_limits<float>::max());
@@ -1296,11 +1330,11 @@ void WaveletGenerator::AddWavelet(int index, ImU32 color, float thickness)
 		wavelet->radius = 1.0f;
 	else if (!this->useAlternateSeries)
 	{
-		wavelet->radius = (double)this->radius * (4 / (index * PI)); // square wave
+		wavelet->radius = static_cast<float>(this->radius * (4 / (index * PI))); // square wave
 	}
 	else
 	{
-		wavelet->radius = (double)this->radius * (8 / (index * index * PI * PI)) * (index % 4 == 1 ? 1.0f : -1.0f); // triangle wave
+		wavelet->radius = static_cast<float>(this->radius * (8 / (index * index * PI * PI)) * (index % 4 == 1 ? 1.0f : -1.0f)); // triangle wave
 	}
 
 	if (isinf(wavelet->radius))
@@ -1324,7 +1358,7 @@ ImVec2 WaveletGenerator::GetPog()
 		return ImVec2(0.0f, 0.0f);
 }
 
-double WaveletGenerator::GetFrequency()
+float WaveletGenerator::GetFrequency()
 {
 	return range;
 }

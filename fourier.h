@@ -17,6 +17,7 @@
 #define MAX_PLOT 20000
 #define MAX_NODES 1000
 #define HALF_LEN 1.0f
+#define NUM_DEMODULATOR_GRAPHS 6
 
 //const double ROUNDING_ERROR_f32 = 0.0001f;
 //
@@ -119,7 +120,6 @@ struct ExampleAppConsole
 		if (ImGui::SmallButton("Clear")) { ClearLog(); }
 		ImGui::SameLine();
 		bool copy_to_clipboard = ImGui::SmallButton("Copy");
-		//static double t = 0.0f; if (ImGui::GetTime() - t > 0.02f) { t = ImGui::GetTime(); AddLog("Spam %f", t); }
 
 		ImGui::Separator();
 
@@ -525,21 +525,22 @@ struct ScrollingBuffer {
 };
 
 struct Wavelet {
-	ImVec2 tail;
-	ImVec2 tip;
-	ImVec2 rotation;
-	ImVec2 pog;
-	ImVec2 min;
-	ImVec2 max;
-	float radius;
-	float t;
-	float rotFactor;
-	ImU32 color;
-	float thikness;
-	float index;
-	int numCoords;
-	float totX;
-	float totY;
+	ImVec2 tail = {};
+	ImVec2 tip = {};
+	ImVec2 rotation = {};;
+	ImVec2 pog = {};;
+	ImVec2 min = {};;
+	ImVec2 max = {};;
+	float radius = 0.0f;
+	float t = 0.0f;;
+	float rotFactor = 0.0f;
+	ImU32 color = 0;
+	float thikness = 0.0f;;
+	float index = 0.0f;;
+	int numCoords = 0;
+	float totX = 0;
+	float totY = 0;
+	bool useSine = true; // if false - implies to use cosine function instead
 };
 
 class WaveletGenerator {
@@ -547,7 +548,7 @@ private:
 	std::vector<Wavelet *> waveletQueue;
 	float normalizer;
 	float radius;
-	void Rotate(int i, double t);
+	void Rotate(int i, float t);
 	ImVec2 finalTip;
 	bool useAlternateSeries;
 	float range;
@@ -555,24 +556,24 @@ private:
 	bool pauseDemodulator;
 
 public:
-	WaveletGenerator(double radius);
+	WaveletGenerator(float radius);
 	~WaveletGenerator();
 
 	ImVec2 GetFinalTip();
-	void DrawWavelet(ExampleAppLog& log, ImDrawList* draw_list, float& plotTimeChangeRate, int index, ScrollingBuffer &curve, ScrollingBuffer *output, ScrollingBuffer &result,  int numOfTimes, ImVec2 origin, bool drawCircles, bool drawEdges); // will draw a full data set wound arround the wavelet numOfTimes times
-	void DrawWavelet(ImDrawList* draw_list, int index, double t, double y, ImVec2 origin, bool drawCircles, bool drawEdges);
-	void DrawWavelet(ImDrawList* draw_list, int index, double t, ImVec2 origin, bool drawCircles, bool drawEdges);
-	void DrawWavelets(ImDrawList* draw_list, double t, ImVec2 origin, bool drawCircles, bool drawEdges);
-	void DrawTraceLine(ImDrawList* draw_list, ImVec2 origin, bool drawEdges, double length = 2000.0f, ImU32 color = IM_COL32(200, 200, 200, 50), float thickness = 0.5f);
+	void DrawWavelet(ExampleAppLog& log, ImDrawList* draw_list, float& plotTimeChangeRate, int index, ScrollingBuffer &curve, ScrollingBuffer *demodulator, ScrollingBuffer &result,  int numOfTimes, ImVec2 origin, bool drawCircles, bool drawEdges); // will draw a full data set wound arround the wavelet numOfTimes times
+	void DrawWavelet(ImDrawList* draw_list, int index, float t, float y, ImVec2 origin, bool drawCircles, bool drawEdges);
+	void DrawWavelet(ImDrawList* draw_list, int index, float t, ImVec2 origin, bool drawCircles, bool drawEdges);
+	void DrawWavelets(ImDrawList* draw_list, float t, ImVec2 origin, bool drawCircles, bool drawEdges);
+	void DrawTraceLine(ImDrawList* draw_list, ImVec2 origin, bool drawEdges, float length = 2000.0f, ImU32 color = IM_COL32(200, 200, 200, 50), float thickness = 0.5f);
 	int GetSize();
 	float GetNormalizer();
-	void SetRadius(double radius);
+	void SetRadius(float radius);
 	void AddWavelet(int index, ImU32 color = IM_COL32(250, 250, 220, 255), float thickness = 2.0f);
-	void AddWavelet(double frequency, double magnitude, ImU32 color = IM_COL32(250, 250, 220, 255), float thickness = 2.0f);
+	void AddWavelet(bool useSine, float frequency, float magnitude, ImU32 color = IM_COL32(250, 250, 220, 255), float thickness = 2.0f);
 	void Clear();
 	void EnableAlternateSeries(bool enable);
 	ImVec2 GetPog();
-	double GetFrequency();
+	float GetFrequency();
 	bool Pause();
 };
 
@@ -586,7 +587,7 @@ private:
 	static ScrollingBuffer tracer;
 	static ScrollingBuffer dataAnalog[3];
 	static ScrollingBuffer dataModulated;
-	static ScrollingBuffer demodulator[3];
+	static ScrollingBuffer demodulator[NUM_DEMODULATOR_GRAPHS];
 	static ScrollingBuffer result;
 
 
@@ -603,15 +604,14 @@ private:
 	bool isConsole;
 	bool isLog;
 	bool isAlternateSeries;
-	//bool isTransform;
-	double time;
-	double timePlot;
+	float time;
+	float timePlot;
 	float timeChangeRate;
 	float plotTimeChangeRate;
 	float radiusCircle;
-	double radiusEnd;
-	double x;
-	double y;
+	float radiusEnd;
+	float x;
+	float y;
 	float finalX;
 	float finalY;
 	struct ImVec4 clear_color;
