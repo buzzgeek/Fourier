@@ -548,7 +548,7 @@ private:
 	std::vector<Wavelet *> waveletQueue;
 	float normalizer;
 	float radius;
-	void Rotate(int i, float t);
+	void Rotate(bool useSine, int i, float t);
 	ImVec2 finalTip;
 	bool useAlternateSeries;
 	float range;

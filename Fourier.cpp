@@ -615,6 +615,8 @@ void fourier::DrawPlotsDemodulate(bool& open)
 			else if (x >= TWO_PI)
 				finalY = rDiv2;
 
+			finalY -= rDiv2;
+
 			assert(finalY < (2 * rDiv2));
 			break;
 		case 13://"sin(x)  - sin(2x) + sin(3x) - sin(4x) + sin(5x)....",
@@ -1050,12 +1052,14 @@ void fourier::SetupMulitpleWavelets()
 		}
 		break;
 	case 11: // Square
-		waveletGenerator.AddWavelet(false, 4.0f, -0.155f);
-		waveletGenerator.AddWavelet(false, 8.0f, .05f);
-		waveletGenerator.AddWavelet(false, 12.0f, -0.023f);
-		waveletGenerator.AddWavelet(false, 16.0f, .014f);
-		waveletGenerator.AddWavelet(false, 20.0f, -0.009f);
-		waveletGenerator.AddWavelet(false, 24.0f, +0.006f);
+		radiusCircle = radiusCircle * static_cast<float>(4.0f / PI);
+		waveletGenerator.AddWavelet(false, 0.0f, 0.143f * radiusCircle);
+		waveletGenerator.AddWavelet(false, 4.0f, -0.155f * radiusCircle);
+		waveletGenerator.AddWavelet(false, 8.0f, .05f * radiusCircle);
+		waveletGenerator.AddWavelet(false, 12.0f, -0.023f * radiusCircle);
+		waveletGenerator.AddWavelet(false, 16.0f, .014f * radiusCircle);
+		waveletGenerator.AddWavelet(false, 20.0f, -0.009f * radiusCircle);
+		waveletGenerator.AddWavelet(false, 24.0f, +0.006f * radiusCircle);
 		break;
 	}
 }
@@ -1111,11 +1115,12 @@ void WaveletGenerator::Clear()
 
 
 
-void WaveletGenerator::Rotate(int i, float t)
+void WaveletGenerator::Rotate(bool useSine, int i, float t)
 {
-	//TODO: sin vs cos?
-
-	waveletQueue[i]->rotation = ImVec2(waveletQueue[i]->radius * cos(-t * waveletQueue[i]->index), waveletQueue[i]->radius * sin(-t * waveletQueue[i]->index));
+	if(useSine) // sin(x)
+		waveletQueue[i]->rotation = ImVec2(waveletQueue[i]->radius * cos(-t * waveletQueue[i]->index), waveletQueue[i]->radius * sin(-t * waveletQueue[i]->index));
+	else // cos(x)
+		waveletQueue[i]->rotation = ImVec2(waveletQueue[i]->radius * -sin(-t * waveletQueue[i]->index), waveletQueue[i]->radius * -cos(t * waveletQueue[i]->index));
 
 	if (i > 0)
 		waveletQueue[i]->tail = ImVec2(waveletQueue[i - 1]->tip.x, waveletQueue[i - 1]->tip.y);
@@ -1154,7 +1159,7 @@ void WaveletGenerator::DrawWavelet(ExampleAppLog& log,
 	{
 		factor = curve.Data[i].y; // here is a tricky problem
 		rotation += rotationStep;
-		Rotate(index, -rotation);
+		Rotate(waveletQueue[index]->useSine, index, -rotation);
 
 		ImVec2 center = ImVec2(waveletQueue[index]->tail.x + origin.x, waveletQueue[index]->tail.y + origin.y);
 		ImVec2 tail = ImVec2(waveletQueue[index]->tip.x + origin.x, waveletQueue[index]->tip.y + origin.y);
@@ -1212,7 +1217,7 @@ void WaveletGenerator::DrawWavelet(ExampleAppLog& log,
 
 void WaveletGenerator::DrawWavelet(ImDrawList* draw_list, int index, float t, float factor, ImVec2 origin, bool drawCircles, bool drawEdges)
 {
-	Rotate(index, t);
+	Rotate(waveletQueue[index]->useSine, index, t);
 	ImVec2 center = ImVec2(waveletQueue[index]->tail.x + origin.x, waveletQueue[index]->tail.y + origin.y);
 	ImVec2 tail = ImVec2((waveletQueue[index]->tip.x + origin.x), (waveletQueue[index]->tip.y + origin.y));
 	ImVec2 tip = ImVec2(((waveletQueue[index]->tip.x * factor) + origin.x + waveletQueue[index]->tip.x), ((waveletQueue[index]->tip.y * factor) + origin.y + waveletQueue[index]->tip.y));
@@ -1238,7 +1243,7 @@ void WaveletGenerator::DrawWavelet(ImDrawList* draw_list, int index, float t, fl
 
 void WaveletGenerator::DrawWavelet(ImDrawList* draw_list, int index, float t, ImVec2 origin, bool drawCircles, bool drawEdges)
 {
-	Rotate(index, t);
+	Rotate(waveletQueue[index]->useSine, index, t);
 
 	ImVec2 tail = ImVec2(waveletQueue[index]->tail.x + origin.x, waveletQueue[index]->tail.y + origin.y);
 	ImVec2 tip = ImVec2(waveletQueue[index]->tip.x + origin.x, waveletQueue[index]->tip.y + origin.y);
