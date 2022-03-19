@@ -4,6 +4,7 @@
 #include <ctype.h>          // toupper
 #include <limits.h>         // INT_MIN, INT_MAX
 #include <math.h>           // sqrtf, powf, cosf, sinf, floorf, ceilf
+#include <complex.h>
 #include <stdio.h>          // vsnprintf, sscanf, printf
 #include <stdlib.h>         // NULL, malloc, free, atoi
 #if defined(_MSC_VER) && _MSC_VER <= 1500 // MSVC 2008 or earlier
@@ -16,16 +17,11 @@
 #define MAX_FREQUENCY 1000
 #define MAX_PLOT 20000
 #define MAX_NODES 1000
-#define HALF_LEN 1.0f
+#define HALF_LEN 100.0f
 #define NUM_DEMODULATOR_GRAPHS 6
 
-//const double ROUNDING_ERROR_f32 = 0.0001f;
-//
-////! returns if a equals b, taking possible rounding errors into account
-//inline bool equals(const double a, const double b, const double tolerance = ROUNDING_ERROR_f32)
-//{
-//	return (a + tolerance >= b) && (a - tolerance <= b);
-//}
+static const float PI = acosf(-1.0f);
+static const float TWO_PI = 2.0f * PI;
 
 // Demonstrate creating a simple console window, with scrolling, filtering, completion and history.
 // For the console example, we are using a more C++ like approach of declaring a class to hold both data and functions.
@@ -524,6 +520,32 @@ struct ScrollingBuffer {
 	}
 };
 
+struct WaveletStruct
+{
+	float     re, im, amplitude, phase, frequency;
+	constexpr WaveletStruct() : re(0.0f), im(0.0f), amplitude(0.0f), phase(0.0f), frequency(0.0f) { }
+	constexpr WaveletStruct(float _re, float _im, float _amplitude, float _phase, float _frequency) : re(_re), im(_im), amplitude(_amplitude), phase(_phase), frequency(_frequency) { }
+};
+
+struct greater_than_key
+{
+	inline bool operator() (const WaveletStruct& struct1, const WaveletStruct& struct2)
+	{
+		return (struct1.amplitude > struct2.amplitude);
+	}
+};
+
+class Strucklet {
+public:
+	float amplitude = 0.0f;
+	float phase = 0.0f;
+	float frequency = 0.0f;
+
+	_Fcomplex value = { 0.0f, 0.0f }; // duno what to call this yet?
+	float re = 0.0f;
+	float im = 0.0f;
+};
+
 struct Wavelet {
 	ImVec2 tail = {};
 	ImVec2 tip = {};
@@ -540,7 +562,7 @@ struct Wavelet {
 	int numCoords = 0;
 	float totX = 0;
 	float totY = 0;
-	bool useSine = true; // if false - implies to use cosine function instead
+	bool isClockwise = true; 
 };
 
 class WaveletGenerator {
@@ -589,7 +611,10 @@ private:
 	static ScrollingBuffer dataModulated;
 	static ScrollingBuffer demodulator[NUM_DEMODULATOR_GRAPHS];
 	static ScrollingBuffer result;
-
+	static std::vector<float> Xaxis;
+	static std::vector<float> Yaxis;
+	static std::vector<WaveletStruct>Xdft;
+	static std::vector<WaveletStruct>Ydft;
 
 	static const char* strategies[];
 	static const char* curves[];
@@ -632,10 +657,15 @@ private:
 	void DrawPlotsDemodulate(bool& p_open);
 	void DrawPlotsTransformScrolling(bool& p_open);
 	void Clear();
+
+
 			
 public:
 	fourier();
 	void ShowGUI();
 	void Init();
+	std::vector<WaveletStruct> DFT(const std::vector<float> curve, int max_freq);
+	ImVec2 DrawEpiCycles(float x, float y, float rotation, std::vector<WaveletStruct>& fourier, float time);
+
 };
 
