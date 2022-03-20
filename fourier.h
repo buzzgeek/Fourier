@@ -520,9 +520,34 @@ struct ScrollingBuffer {
 	}
 };
 
+struct Complex
+{
+	float re = 0.0f;
+	float im = 0.0f;
+
+	Complex(float re, float im)
+	{
+		this->re = re;
+		this->im = im;
+	}
+
+	void add(const Complex &c)
+	{
+		this->re += c.re;
+		this->im += c.im;
+	}
+
+	Complex mult(const Complex& c)
+	{
+		const float re = this->re * c.re - this->im * c.im;
+		const float im = this->re * c.im + this->im * c.re;
+		return Complex(re, im);
+	}
+};
+
 struct WaveletStruct
 {
-	float     re, im, amplitude, phase, frequency;
+	float re, im, amplitude, phase, frequency;
 	constexpr WaveletStruct() : re(0.0f), im(0.0f), amplitude(0.0f), phase(0.0f), frequency(0.0f) { }
 	constexpr WaveletStruct(float _re, float _im, float _amplitude, float _phase, float _frequency) : re(_re), im(_im), amplitude(_amplitude), phase(_phase), frequency(_frequency) { }
 };
@@ -533,17 +558,6 @@ struct greater_than_key
 	{
 		return (struct1.amplitude > struct2.amplitude);
 	}
-};
-
-class Strucklet {
-public:
-	float amplitude = 0.0f;
-	float phase = 0.0f;
-	float frequency = 0.0f;
-
-	_Fcomplex value = { 0.0f, 0.0f }; // duno what to call this yet?
-	float re = 0.0f;
-	float im = 0.0f;
 };
 
 struct Wavelet {
@@ -615,6 +629,7 @@ private:
 	static std::vector<float> Yaxis;
 	static std::vector<WaveletStruct>Xdft;
 	static std::vector<WaveletStruct>Ydft;
+	static std::vector<WaveletStruct>Cdft;
 
 	static const char* strategies[];
 	static const char* curves[];
@@ -665,6 +680,7 @@ public:
 	void ShowGUI();
 	void Init();
 	std::vector<WaveletStruct> DFT(const std::vector<float> curve, int max_freq);
+	std::vector<WaveletStruct> DFT(const std::vector<Complex> curve, int max_freq);
 	ImVec2 DrawEpiCycles(float x, float y, float rotation, std::vector<WaveletStruct>& fourier, float time);
 
 };
