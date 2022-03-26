@@ -16,6 +16,8 @@ https://github.com/ocornut/imgui
 
 https://github.com/epezent/implot
 
+https://github.com/nothings/stb - stb_image.h
+
 Fourier - Concepts
 
 "But what is the Fourier Transform? A visual introduction" by 3Blue1Brown -> https://www.youtube.com/watch?v=spUNpyF58BY&t=574
