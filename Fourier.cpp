@@ -1,3 +1,4 @@
+#include "stb_image.h"
 #include <iostream>
 #include <complex>
 #include <limits>
@@ -35,7 +36,8 @@ const char* fourier::concepts[] = { "fourier series",
 									"fourier transform (sinusoidal)",
 									"demodulate",
 									"dft 2 epicycles",
-									"dft 1 epicycle" };
+									"dft 1 epicycle",
+									"capture path", };
 
 const char* fourier::strategies[] = { "integers",
 										"uneven",
@@ -72,7 +74,7 @@ ExampleAppConsole fourier::console = {};
 ExampleAppLog fourier::log = {};
 WaveletGenerator fourier::waveletGenerator = { 64 };
 ScrollingBuffer fourier::tracer = { 100000 };
-ScrollingBuffer fourier::result = { MAX_NODES };
+ScrollingBuffer fourier::result = { 1000000 };
 ScrollingBuffer fourier::dataAnalog[3] = { {MAX_PLOT}, {MAX_PLOT}, };
 ScrollingBuffer fourier::dataModulated = { MAX_PLOT };
 ScrollingBuffer fourier::demodulator[NUM_DEMODULATOR_GRAPHS] = { {MAX_PLOT},
@@ -135,6 +137,9 @@ void fourier::ShowGUI()
 	case 3:
 		// TODO draw plots?
 		break;
+	case 4:
+		// draw image to capture paths
+		break;
 	}
 	DrawCanvas();
 	DrawConsole(isConsole);
@@ -157,10 +162,14 @@ void fourier::DrawCanvas()
 	static ImVec2 scrolling(0.0f, 0.0f);
 	static bool opt_enable_grid = true;
 	static bool opt_enable_context_menu = true;
+	static bool opt_enable_image = false;
 	static bool adding_line = false;
+	static bool stop_capture = false;
 
 	ImGui::Checkbox("Enable grid", &opt_enable_grid); ImGui::SameLine();
-	ImGui::Checkbox("Enable context menu", &opt_enable_context_menu);
+	ImGui::Checkbox("Enable context menu", &opt_enable_context_menu); ImGui::SameLine();
+	if(concept_current != 5)
+		ImGui::Checkbox("Enable image", &opt_enable_image);
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS) : Frequency %.3f Hz", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate, waveletGenerator.GetFrequency());
 	//ImGui::Text("Mouse Left: drag to add lines,\nMouse Right: drag to scroll, click for context menu.");
 
@@ -196,20 +205,30 @@ void fourier::DrawCanvas()
 	const ImVec2 origin(canvas_p0.x + scrolling.x, canvas_p0.y + scrolling.y); // Lock scrolled origin
 	const ImVec2 mouse_pos_in_canvas(io.MousePos.x - origin.x, io.MousePos.y - origin.y);
 
-	//// Add first and second point
-	if (is_hovered && !adding_line && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+
+	ImVec2 image_pos = ImVec2(canvas_p0.x + (canvas_sz.x / 2) + scrolling.x, canvas_p0.y + (canvas_sz.y / 2) + scrolling.y);
+
+	if (opt_enable_image || concept_current == 5)
+		DrawBackground(draw_list, image_pos);
+
+	// Add first and second point
+	if (is_hovered && !stop_capture && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 	{
 		points.push_back(mouse_pos_in_canvas);
 		// need to add temporary point that will be replaced in the next if statement by the most current mouse cursor's position
 		points.push_back(mouse_pos_in_canvas);
-		adding_line = true;
+		result.AddPoint(mouse_pos_in_canvas.x, mouse_pos_in_canvas.y);
 	}
 
-	if (adding_line)
+	if (points.size() > 0 && !stop_capture)
 	{
-		points.back() = mouse_pos_in_canvas;
-		if (!ImGui::IsMouseDown(ImGuiMouseButton_Left))
-			adding_line = false;
+		points.push_back(mouse_pos_in_canvas);
+		result.AddPoint(mouse_pos_in_canvas.x, mouse_pos_in_canvas.y);
+	}
+
+	if (is_hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+	{
+		stop_capture = true;
 	}
 
 	// Pan (we use a zero mouse threshold when there's no context menu)
@@ -219,6 +238,7 @@ void fourier::DrawCanvas()
 	{
 		scrolling.x += io.MouseDelta.x;
 		scrolling.y += io.MouseDelta.y;
+		tracer.Erase();
 	}
 
 	// Context menu (under default mouse threshold)
@@ -230,8 +250,13 @@ void fourier::DrawCanvas()
 		if (adding_line)
 			points.resize(points.size() - 2);
 		adding_line = false;
-		if (ImGui::MenuItem("Remove one", NULL, false, points.Size > 0)) { points.resize(points.size() - 2); }
-		if (ImGui::MenuItem("Remove all", NULL, false, points.Size > 0)) { points.clear(); }
+		//if (ImGui::MenuItem("Remove one", NULL, false, points.Size > 0)) { points.resize(points.size() - 2); }
+		if (ImGui::MenuItem("Remove all", NULL, false, points.Size > 0)) 
+		{ 
+			points.clear(); 
+			stop_capture = false;
+			result.Erase();
+		}
 		ImGui::EndPopup();
 	}
 
@@ -248,9 +273,17 @@ void fourier::DrawCanvas()
 		for (float y = fmodf(scrolling.y, GRID_STEP) + GRID_OFFSET_Y; y < canvas_sz.y; y += GRID_STEP)
 			draw_list->AddLine(ImVec2(canvas_p0.x, canvas_p0.y + y), ImVec2(canvas_p1.x, canvas_p0.y + y), IM_COL32(200, 200, 200, 40));
 	}
-	for (int n = 0; n < points.Size; n += 2)
-		draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[n + 1].x, origin.y + points[n + 1].y), IM_COL32(255, 255, 0, 255), 2.0f);
+	for (int n = 0; n < points.Size; n += 1)
+		if(n + 1 < points.Size)
+			draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[n + 1].x, origin.y + points[n + 1].y), IM_COL32(255, 255, 0, 255), 2.0f);
 #pragma endregion init_canvas
+
+	if (concept_current == 5) // we are done here, capture path of image only
+	{
+		draw_list->PopClipRect();
+		ImGui::End();// end canvas
+		return;
+	}
 
 #pragma region draw_wavelets
 
@@ -273,8 +306,8 @@ void fourier::DrawCanvas()
 		waveletGenerator.DrawWavelet(log, draw_list, plotTimeChangeRate, 0, dataModulated, demodulator, result, numNodes, circle_pos, showCircles, showEdges);
 		break;
 	case 3: //dft 2 epicycles
-		e2 = DrawEpiCycles(circle_pos.x, circle_pos.y - (10 * radiusCircle), 0.0f, Xdft, time);
-		e1 = DrawEpiCycles(circle_pos.x - (10 * radiusCircle), circle_pos.y, PI / 2.0f, Ydft, time);
+		e2 = DrawEpiCycles(origin.x, origin.y, 0.0f, Xdft, time);
+		e1 = DrawEpiCycles(origin.x , origin.y, PI / 2.0f, Ydft, time);
 
 		if (showEdges)
 		{
@@ -284,13 +317,14 @@ void fourier::DrawCanvas()
 		tracer.AddPoint(e2.x - circle_pos.x, e1.y - circle_pos.y);
 		break;
 	case 4: //dft 1 epicycle
-		ec = DrawEpiCycles(circle_pos.x, circle_pos.y, 0.0f, Cdft, time);
+//		ec = DrawEpiCycles(circle_pos.x, circle_pos.y, 0.0f, Cdft, time);
+		ec = DrawEpiCycles(origin.x, origin.y, 0.0f, Cdft, time);
 		tracer.AddPoint(ec.x - circle_pos.x, ec.y - circle_pos.y);
 		break;
 	}
 
 	if (concept_current >= 3)
-		time += static_cast<float>(TWO_PI / Xdft.size());
+		time += static_cast<float>(TWO_PI / Cdft.size());
 	else
 		time += static_cast<float>(TWO_PI / timeChangeRate);
 
@@ -307,6 +341,13 @@ void fourier::DrawCanvas()
 				tracer.AddPoint(0.0f, 0.0f);
 		}
 		ImVec2 p = { 0.0f, 0.0f };
+
+
+		for (int n = 1; n < tracer.Data.Size; n += 1)
+			if (n + 1 < tracer.Data.Size)
+				draw_list->AddLine(ImVec2(circle_pos.x + tracer.Data[n].x, circle_pos.y + tracer.Data[n].y), 
+					ImVec2(circle_pos.x + tracer.Data[n + 1].x, circle_pos.y + tracer.Data[n + 1].y), 
+					IM_COL32(20, 125, 225, 255), 2.0f);
 
 		for (int i = 0; i < tracer.Data.size(); i++)
 		{
@@ -329,9 +370,9 @@ void fourier::DrawCanvas()
 		waveletGenerator.GetPog().y + circle_pos.y);
 	draw_list->AddCircle(pog, 10.0f, IM_COL32(200, 200, 80, 255), 0, 2.0f);
 
-	draw_list->PopClipRect();
 #pragma endregion draw_wavelets
 
+	draw_list->PopClipRect();
 	ImGui::End();// end canvas
 
 }
@@ -395,11 +436,8 @@ void fourier::DrawProperties()
 		}
 		timePlot = 0.0f;
 		waveletGenerator.SetRadius(radiusCircle);
+		time = 0.0f;
 		Setup();
-		if (concept_current != 0)// || (concept_current == 0 && strategy_current == 10)) // this is busted TODO
-		{
-			result.Erase();
-		}
 
 		if (concept_current != 2)
 			dataAnalog[2].Erase(); // holds temporary data for further analysis that needs to be removed now
@@ -504,6 +542,19 @@ void fourier::DrawAppDockSpace(bool& open)
 	}
 
 	ImGui::End();
+}
+
+
+void fourier::DrawBackground(ImDrawList* draw_list, ImVec2 offset)
+{
+	ImGuiIO& io = ImGui::GetIO();
+	MyData* myData = (MyData*)io.UserData;
+	ImTextureID my_tex_id = myData->textureId;
+	float my_tex_w = myData->width;
+	float my_tex_h = myData->height;
+	ImVec2 uv_min = ImVec2(0.0f, 0.0f);                 // Top-left
+	ImVec2 uv_max = ImVec2(1.0f, 1.0f);                 // Lower-right
+	draw_list->AddImage(my_tex_id, ImVec2(offset.x - (my_tex_w/2.0f), offset.y - (my_tex_h/2.0f)), ImVec2(offset.x + (my_tex_w/2.0f), offset.y + (my_tex_h/2.0f)), uv_min, uv_max);
 }
 
 void fourier::DrawConsole(bool& open)
@@ -1103,9 +1154,6 @@ void fourier::SetupMulitpleWavelets()
 		waveletGenerator.AddWavelet(false, 36.0f, -0.138f * radiusCircle);
 		waveletGenerator.AddWavelet(false, 40.0f, 0.112f * radiusCircle);
 
-
-
-
 		break;
 	}
 }
@@ -1135,31 +1183,42 @@ void fourier::Setup()
 	std::vector<Complex> data = {};
 
 
-
-	// a square ???
-	for (int i = 0; i <= 100; i++)
+	if (result.Data.size() > 0)
 	{
-		xdata.push_back(static_cast<float>(i));
-		ydata.push_back(100.0f);
-		data.push_back(Complex(static_cast<float>(i), 100.0f));
+		for (int i = 1; i < result.Data.size(); i++)
+		{
+			xdata.push_back(result.Data[i].x);
+			ydata.push_back(result.Data[i].y);
+			data.push_back(Complex(result.Data[i].x, result.Data[i].y));
+		}
 	}
-	for (int i = 100; i >= 0; i--)
+	else
 	{
-		xdata.push_back(100.0f);
-		ydata.push_back(static_cast<float>(i));
-		data.push_back(Complex(100.0f, static_cast<float>(i)));
-	}
-	for (int i = 100; i >= 0; i--)
-	{
-		xdata.push_back(static_cast<float>(i));
-		ydata.push_back(0);
-		data.push_back(Complex(static_cast<float>(i), 0.0f));
-	}
-	for (int i = 0; i <= 100; i++)
-	{
-		xdata.push_back(0.0f);
-		ydata.push_back(static_cast<float>(i));
-		data.push_back(Complex(0.0f, static_cast<float>(i)));
+		// a square ???
+		for (int i = 0; i <= 100; i++)
+		{
+			xdata.push_back(static_cast<float>(i));
+			ydata.push_back(100.0f);
+			data.push_back(Complex(static_cast<float>(i), 100.0f));
+		}
+		for (int i = 100; i >= 0; i--)
+		{
+			xdata.push_back(100.0f);
+			ydata.push_back(static_cast<float>(i));
+			data.push_back(Complex(100.0f, static_cast<float>(i)));
+		}
+		for (int i = 100; i >= 0; i--)
+		{
+			xdata.push_back(static_cast<float>(i));
+			ydata.push_back(0);
+			data.push_back(Complex(static_cast<float>(i), 0.0f));
+		}
+		for (int i = 0; i <= 100; i++)
+		{
+			xdata.push_back(0.0f);
+			ydata.push_back(static_cast<float>(i));
+			data.push_back(Complex(0.0f, static_cast<float>(i)));
+		}
 	}
 
 	//for (int i = 0; i < 100; i++)
@@ -1173,6 +1232,7 @@ void fourier::Setup()
 
 	// get the discrete fourier components
 	int s = static_cast<int>(xdata.size());
+	//int s = numNodes;
 
 	Xdft = DFT(xdata, s);
 	Ydft = DFT(ydata, s);
@@ -1330,14 +1390,14 @@ void WaveletGenerator::DrawWavelet(ExampleAppLog& log,
 
 	float range = static_cast<float>((static_cast<int>(this->range * 100.0f) / 10)) / 10.0f;
 	float amplitude = static_cast<float>(static_cast<int>((sinX * 1000.0f) / 10) / 100.0f);
-	if ((!isPositive && cosX >= 0.0f) || (isPositive && cosX < 0.0f))
-	{
-		if (range > 0.33f && abs(amplitude) >= 0.01f) {
-			log.AddLog("pos:[%.4f] - cosx:[%.4f] - amplitude:[%.4f] - mag:[%.4f]\n", range, cosX, amplitude, magnitude);
-			result.AddPoint(range, amplitude);
-		}
-		isPositive = !isPositive;
-	}
+	//if ((!isPositive && cosX >= 0.0f) || (isPositive && cosX < 0.0f))
+	//{
+	//	if (range > 0.33f && abs(amplitude) >= 0.01f) {
+	//		log.AddLog("pos:[%.4f] - cosx:[%.4f] - amplitude:[%.4f] - mag:[%.4f]\n", range, cosX, amplitude, magnitude);
+	//		result.AddPoint(range, amplitude);
+	//	}
+	//	isPositive = !isPositive;
+	//}
 
 	this->range += stepFrequency;
 }
@@ -1558,6 +1618,7 @@ std::vector<WaveletStruct> fourier::DFT(const std::vector<Complex> curve, int ma
 
 		wavelet.phase = atan2(wavelet.im, wavelet.re);
 
+//		if(abs(wavelet.amplitude)>0.001)
 		res.push_back(wavelet);
 	}
 
@@ -1569,6 +1630,8 @@ ImVec2 fourier::DrawEpiCycles(float origin_x, float origin_y, float rotation, st
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();
 	float x = origin_x;
 	float y = origin_y;
+
+	radiusCircle = 1.0f;
 
 	for (int i = 0; i < fourier.size(); i++)
 	{

@@ -14,7 +14,7 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_vulkan.h"
 #include "fourier.h"
-#define STB_IMAGE_IMPLEMENTATION
+//#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include <stdio.h>          // printf, fprintf
 #include <stdlib.h>         // abort
@@ -466,6 +466,7 @@ int main(int, char**)
         check_vk_result(err);
 
         ImGui_ImplVulkan_CreateFontsTexture(command_buffer);
+        ImGui_ImplVulkan_CreateImageTexture(command_buffer);
 
         VkSubmitInfo end_info = {};
         end_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -518,7 +519,6 @@ int main(int, char**)
         ImGui::NewFrame();
 
         g_fourier.ShowGUI();
-        //ImPlot::ShowDemoWindow(&show_demo_window);
 
         // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
         if (show_demo_window)

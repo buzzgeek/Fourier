@@ -671,6 +671,7 @@ private:
 	void DrawPlots(bool& p_open);
 	void DrawPlotsDemodulate(bool& p_open);
 	void DrawPlotsTransformScrolling(bool& p_open);
+	void DrawBackground(ImDrawList* draw_list, ImVec2 offset);
 	void Clear();
 
 
