@@ -168,7 +168,7 @@ void fourier::DrawCanvas()
 
 	ImGui::Checkbox("Enable grid", &opt_enable_grid); ImGui::SameLine();
 	ImGui::Checkbox("Enable context menu", &opt_enable_context_menu); ImGui::SameLine();
-	if(concept_current != 5)
+	if (concept_current != 5)
 		ImGui::Checkbox("Enable image", &opt_enable_image);
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS) : Frequency %.3f Hz", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate, waveletGenerator.GetFrequency());
 	//ImGui::Text("Mouse Left: drag to add lines,\nMouse Right: drag to scroll, click for context menu.");
@@ -251,9 +251,9 @@ void fourier::DrawCanvas()
 			points.resize(points.size() - 2);
 		adding_line = false;
 		//if (ImGui::MenuItem("Remove one", NULL, false, points.Size > 0)) { points.resize(points.size() - 2); }
-		if (ImGui::MenuItem("Remove all", NULL, false, points.Size > 0)) 
-		{ 
-			points.clear(); 
+		if (ImGui::MenuItem("Remove all", NULL, false, points.Size > 0))
+		{
+			points.clear();
 			stop_capture = false;
 			result.Erase();
 		}
@@ -274,7 +274,7 @@ void fourier::DrawCanvas()
 			draw_list->AddLine(ImVec2(canvas_p0.x, canvas_p0.y + y), ImVec2(canvas_p1.x, canvas_p0.y + y), IM_COL32(200, 200, 200, 40));
 	}
 	for (int n = 0; n < points.Size; n += 1)
-		if(n + 1 < points.Size)
+		if (n + 1 < points.Size)
 			draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[n + 1].x, origin.y + points[n + 1].y), IM_COL32(255, 255, 0, 255), 2.0f);
 #pragma endregion init_canvas
 
@@ -307,7 +307,7 @@ void fourier::DrawCanvas()
 		break;
 	case 3: //dft 2 epicycles
 		e2 = DrawEpiCycles(origin.x, origin.y, 0.0f, Xdft, time);
-		e1 = DrawEpiCycles(origin.x , origin.y, PI / 2.0f, Ydft, time);
+		e1 = DrawEpiCycles(origin.x, origin.y, PI / 2.0f, Ydft, time);
 
 		if (showEdges)
 		{
@@ -317,7 +317,6 @@ void fourier::DrawCanvas()
 		tracer.AddPoint(e2.x - circle_pos.x, e1.y - circle_pos.y);
 		break;
 	case 4: //dft 1 epicycle
-//		ec = DrawEpiCycles(circle_pos.x, circle_pos.y, 0.0f, Cdft, time);
 		ec = DrawEpiCycles(origin.x, origin.y, 0.0f, Cdft, time);
 		tracer.AddPoint(ec.x - circle_pos.x, ec.y - circle_pos.y);
 		break;
@@ -345,14 +344,14 @@ void fourier::DrawCanvas()
 
 		for (int n = 1; n < tracer.Data.Size; n += 1)
 			if (n + 1 < tracer.Data.Size)
-				draw_list->AddLine(ImVec2(circle_pos.x + tracer.Data[n].x, circle_pos.y + tracer.Data[n].y), 
-					ImVec2(circle_pos.x + tracer.Data[n + 1].x, circle_pos.y + tracer.Data[n + 1].y), 
+				draw_list->AddLine(ImVec2(circle_pos.x + tracer.Data[n].x, circle_pos.y + tracer.Data[n].y),
+					ImVec2(circle_pos.x + tracer.Data[n + 1].x, circle_pos.y + tracer.Data[n + 1].y),
 					IM_COL32(20, 125, 225, 255), 2.0f);
 
 		for (int i = 0; i < tracer.Data.size(); i++)
 		{
 			p = ImVec2(tracer.Data[i].x + circle_pos.x, tracer.Data[i].y + circle_pos.y);
-			if (i == 0)
+			if (i == 0 && concept_current != 4)
 			{
 				draw_list->AddCircle(p, 5.0f, IM_COL32(255, 20, 125, 255), 0, 2.0f);
 			}
@@ -362,13 +361,17 @@ void fourier::DrawCanvas()
 			}
 		}
 
-		draw_list->AddCircle(p, 3.0f, IM_COL32(255, 20, 125, 255), 0, 2.0f);
+		if (concept_current != 4)
+			draw_list->AddCircle(p, 3.0f, IM_COL32(255, 20, 125, 255), 0, 2.0f);
 	}
 
-	draw_list->AddCircle(circle_pos, 3.0f, IM_COL32(255, 20, 125, 255), 0, 2.0f);
-	ImVec2 pog = ImVec2(waveletGenerator.GetPog().x + circle_pos.x,
-		waveletGenerator.GetPog().y + circle_pos.y);
-	draw_list->AddCircle(pog, 10.0f, IM_COL32(200, 200, 80, 255), 0, 2.0f);
+	if (concept_current != 4)
+	{
+		draw_list->AddCircle(circle_pos, 3.0f, IM_COL32(255, 20, 125, 255), 0, 2.0f);
+		ImVec2 pog = ImVec2(waveletGenerator.GetPog().x + circle_pos.x,
+			waveletGenerator.GetPog().y + circle_pos.y);
+		draw_list->AddCircle(pog, 10.0f, IM_COL32(200, 200, 80, 255), 0, 2.0f);
+	}
 
 #pragma endregion draw_wavelets
 
@@ -554,7 +557,7 @@ void fourier::DrawBackground(ImDrawList* draw_list, ImVec2 offset)
 	float my_tex_h = myData->height;
 	ImVec2 uv_min = ImVec2(0.0f, 0.0f);                 // Top-left
 	ImVec2 uv_max = ImVec2(1.0f, 1.0f);                 // Lower-right
-	draw_list->AddImage(my_tex_id, ImVec2(offset.x - (my_tex_w/2.0f), offset.y - (my_tex_h/2.0f)), ImVec2(offset.x + (my_tex_w/2.0f), offset.y + (my_tex_h/2.0f)), uv_min, uv_max);
+	draw_list->AddImage(my_tex_id, ImVec2(offset.x - (my_tex_w / 2.0f), offset.y - (my_tex_h / 2.0f)), ImVec2(offset.x + (my_tex_w / 2.0f), offset.y + (my_tex_h / 2.0f)), uv_min, uv_max);
 }
 
 void fourier::DrawConsole(bool& open)
@@ -602,7 +605,7 @@ void fourier::DrawPlotsDemodulate(bool& open)
 	ImGui::Checkbox("sin(x)+cos(x)", &showAnalog[4]); ImGui::SameLine();
 	ImGui::Checkbox("sin(x)-cos(x)", &showAnalog[5]);
 
-	float range = TWO_PI;
+	double range = TWO_PI;
 	float minY = 100.0f;
 	float maxY = 0.0f;
 
@@ -1221,23 +1224,37 @@ void fourier::Setup()
 		}
 	}
 
-	//for (int i = 0; i < 100; i++)
-	//{
-	//	float angle = i * (TWO_PI / 100.0f);
-	//	float x = 10 * cos(angle);
-	//	float y = 10 * sin(angle);
-	//	xdata.push_back(x);
-	//	ydata.push_back(y);
-	//}
-
 	// get the discrete fourier components
 	int s = static_cast<int>(xdata.size());
-	//int s = numNodes;
 
-	Xdft = DFT(xdata, s);
-	Ydft = DFT(ydata, s);
-	Cdft = DFT(data, s);
 
+	// need to restrict max number of frequencies or image gets whacked
+	int maxlen = 1000;
+	if (s > maxlen)
+	{
+		std::vector<Complex> tmp;
+		std::vector<float> tmpx;
+		std::vector<float> tmpy;
+		int step = (s / maxlen) + 1;
+		for (int i = 0; i < s; i += step)
+		{
+			if (i < data.size())
+			{
+				tmp.push_back(data[i]);
+				tmpx.push_back(data[i].re);
+				tmpy.push_back(data[i].im);
+			}
+		}
+		Cdft = DFT(tmp, tmp.size());
+		Xdft = DFT(tmpx, tmpx.size());
+		Ydft = DFT(tmpy, tmpy.size());
+	}
+	else
+	{
+		Cdft = DFT(data, s);
+		Xdft = DFT(xdata, s);
+		Ydft = DFT(ydata, s);
+	}
 
 	std::sort(Xdft.begin(), Xdft.end(), greater_than_key());
 	std::sort(Ydft.begin(), Ydft.end(), greater_than_key());
@@ -1601,7 +1618,7 @@ std::vector<WaveletStruct> fourier::DFT(const std::vector<Complex> curve, int ma
 
 		for (int n = 0; n < N; n++)
 		{
-			const float phi = (TWO_PI * k * n) / N;
+			const double phi = (TWO_PI * k * n) / N;
 			const Complex c(cos(phi), -sin(phi));
 			Complex tmp = curve[n];
 			sum.add(tmp.mult(c));
@@ -1613,39 +1630,38 @@ std::vector<WaveletStruct> fourier::DFT(const std::vector<Complex> curve, int ma
 		WaveletStruct wavelet;
 		wavelet.re = sum.re;
 		wavelet.im = sum.im;
-		wavelet.frequency = static_cast<float>(k);
+		wavelet.frequency = static_cast<double>(k);
 		wavelet.amplitude = sqrt(wavelet.re * wavelet.re + wavelet.im * wavelet.im);
 
 		wavelet.phase = atan2(wavelet.im, wavelet.re);
 
-//		if(abs(wavelet.amplitude)>0.001)
 		res.push_back(wavelet);
 	}
 
 	return res;
 }
 
-ImVec2 fourier::DrawEpiCycles(float origin_x, float origin_y, float rotation, std::vector<WaveletStruct>& fourier, float time)
+ImVec2 fourier::DrawEpiCycles(float origin_x, float origin_y, double rotation, std::vector<WaveletStruct>& fourier, double time)
 {
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();
-	float x = origin_x;
-	float y = origin_y;
+	double x = origin_x;
+	double y = origin_y;
 
 	radiusCircle = 1.0f;
 
 	for (int i = 0; i < fourier.size(); i++)
 	{
-		float prevx = x;
-		float prevy = y;
+		double prevx = x;
+		double prevy = y;
 
-		x += radiusCircle * fourier[i].amplitude * cos(fourier[i].frequency * time + fourier[i].phase + rotation);
-		y += radiusCircle * fourier[i].amplitude * sin(fourier[i].frequency * time + fourier[i].phase + rotation);
+		x += radiusCircle * fourier[i].amplitude * cos((fourier[i].frequency * time) + fourier[i].phase + rotation);
+		y += radiusCircle * fourier[i].amplitude * sin((fourier[i].frequency * time) + fourier[i].phase + rotation);
 
 		if (showCircles)
-			draw_list->AddCircle(ImVec2(prevx, prevy), fourier[i].amplitude * radiusCircle, IM_COL32(circle_color.x * 255, circle_color.y * 255, circle_color.z * 255, 255));
+			draw_list->AddCircle(ImVec2(static_cast<float>(prevx), static_cast<float>(prevy)), static_cast<float>(fourier[i].amplitude * radiusCircle), IM_COL32(circle_color.x * 255, circle_color.y * 255, circle_color.z * 255, 255));
 		if (showEdges)
-			draw_list->AddLine(ImVec2(prevx, prevy), ImVec2(x, y), IM_COL32(circle_color.x * 255, circle_color.y * 255, circle_color.z * 255, 255));
+			draw_list->AddLine(ImVec2(static_cast<float>(prevx), static_cast<float>(prevy)), ImVec2(static_cast<float>(x), static_cast<float>(y)), IM_COL32(circle_color.x * 255, circle_color.y * 255, circle_color.z * 255, 255));
 	}
 
-	return ImVec2(x, y);
+	return ImVec2(static_cast<float>(x), static_cast<float>(y));
 }

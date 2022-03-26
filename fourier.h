@@ -20,8 +20,8 @@
 #define HALF_LEN 100.0f
 #define NUM_DEMODULATOR_GRAPHS 6
 
-static const float PI = acosf(-1.0f);
-static const float TWO_PI = 2.0f * PI;
+static const double PI = acos(-1.0f);
+static const double TWO_PI = 2.0f * PI;
 
 // Demonstrate creating a simple console window, with scrolling, filtering, completion and history.
 // For the console example, we are using a more C++ like approach of declaring a class to hold both data and functions.
@@ -522,10 +522,10 @@ struct ScrollingBuffer {
 
 struct Complex
 {
-	float re = 0.0f;
-	float im = 0.0f;
+	double re = 0.0f;
+	double im = 0.0f;
 
-	Complex(float re, float im)
+	Complex(double re, double im)
 	{
 		this->re = re;
 		this->im = im;
@@ -539,15 +539,15 @@ struct Complex
 
 	Complex mult(const Complex& c)
 	{
-		const float re = this->re * c.re - this->im * c.im;
-		const float im = this->re * c.im + this->im * c.re;
+		const double re = this->re * c.re - this->im * c.im;
+		const double im = this->re * c.im + this->im * c.re;
 		return Complex(re, im);
 	}
 };
 
 struct WaveletStruct
 {
-	float re, im, amplitude, phase, frequency;
+	double re, im, amplitude, phase, frequency;
 	constexpr WaveletStruct() : re(0.0f), im(0.0f), amplitude(0.0f), phase(0.0f), frequency(0.0f) { }
 	constexpr WaveletStruct(float _re, float _im, float _amplitude, float _phase, float _frequency) : re(_re), im(_im), amplitude(_amplitude), phase(_phase), frequency(_frequency) { }
 };
@@ -645,7 +645,7 @@ private:
 	bool isLog;
 	bool isAlternateSeries;
 	float time;
-	float timePlot;
+	double timePlot;
 	float timeChangeRate;
 	float plotTimeChangeRate;
 	float radiusCircle;
@@ -682,7 +682,7 @@ public:
 	void Init();
 	std::vector<WaveletStruct> DFT(const std::vector<float> curve, int max_freq);
 	std::vector<WaveletStruct> DFT(const std::vector<Complex> curve, int max_freq);
-	ImVec2 DrawEpiCycles(float x, float y, float rotation, std::vector<WaveletStruct>& fourier, float time);
+	ImVec2 DrawEpiCycles(float x, float y, double rotation, std::vector<WaveletStruct>& fourier, double time);
 
 };
 
