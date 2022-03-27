@@ -89,6 +89,7 @@ std::vector<float> fourier::Yaxis = {};
 std::vector<WaveletStruct> fourier::Xdft = {};
 std::vector<WaveletStruct> fourier::Ydft = {};
 std::vector<WaveletStruct> fourier::Cdft = {};
+ImVector<ImVec2> fourier::points = {};
 
 fourier::fourier()
 {
@@ -135,10 +136,16 @@ void fourier::ShowGUI()
 		DrawPlotsDemodulate(isPlots);
 		break;
 	case 3:
-		// TODO draw plots?
+		// draw plots for two epicycles
+		DrawPlotsEpiCyclesScrolling(isPlots);
 		break;
 	case 4:
-		// draw image to capture paths
+		// draw plots for one epicycle
+		DrawPlotsEpiCyclesScrolling(isPlots);
+		break;
+	case 5:
+		// draw plot for caputure image
+		DrawPlotsCaptureScrolling(isPlots);
 		break;
 	}
 	DrawCanvas();
@@ -158,7 +165,6 @@ void fourier::DrawCanvas()
 	ImGui::Begin("Canvas");
 
 #pragma region init_canvas
-	static ImVector<ImVec2> points;
 	static ImVec2 scrolling(0.0f, 0.0f);
 	static bool opt_enable_grid = true;
 	static bool opt_enable_context_menu = true;
@@ -275,7 +281,7 @@ void fourier::DrawCanvas()
 	}
 	for (int n = 0; n < points.Size; n += 1)
 		if (n + 1 < points.Size)
-			draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[n + 1].x, origin.y + points[n + 1].y), IM_COL32(255, 255, 0, 255), 2.0f);
+			draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[n + 1].x, origin.y + points[n + 1].y), IM_COL32(155, 55, 55, 255), 4.0f);
 #pragma endregion init_canvas
 
 	if (concept_current == 5) // we are done here, capture path of image only
@@ -791,6 +797,122 @@ void fourier::DrawPlotsDemodulate(bool& open)
 	ImGui::End();
 }
 
+
+void fourier::DrawPlotsCaptureScrolling(bool& open)
+{
+	ImGui::Begin("DigitalPlots", &open);
+
+	static bool paused = false;
+	static bool showAnalog[2] = { true, true };
+	static bool flipSign = false;
+	static float prevX = 1.0f;
+	static float min = 0.0f;
+	static float max = 1.0f;
+
+	char label[32];
+	ImGui::Checkbox("real", &showAnalog[0]);  ImGui::SameLine();
+	ImGui::Checkbox("imag", &showAnalog[1]);
+
+	if (!paused) {
+		timePlot += static_cast<float>(PI / plotTimeChangeRate); //ImGui::GetIO().DeltaTime;
+		int len = points.size();
+		if (showAnalog[0] && len > 0)
+		{
+			dataAnalog[0].AddPoint(-timePlot, points[len-1].x);
+			if (points[len - 1].x > max)
+				max = points[len - 1].x;
+			if (points[len - 1].x < min)
+				min = points[len - 1].x;
+		}
+		else
+		{
+			min = 0.0f;
+			max = 0.0f;
+			min = 0.0f;
+			max = 0.0f;
+		}
+		if (showAnalog[1] && len > 0)
+		{
+			dataAnalog[1].AddPoint(-timePlot, points[len - 1].y);
+			if (points[len - 1].y > max)
+				max = points[len - 1].y;
+			if (points[len - 1].y < min)
+				min = points[len - 1].y;
+		}
+
+		if(len > 0)
+			dataAnalog[2].AddPoint(points[len - 1].x / 100.0f, points[len - 1].y / 100.0f); // for demodulation concept
+	}
+
+	if (ImPlot::BeginPlot("##Digital", ImGui::GetContentRegionAvail())) {
+		ImPlot::SetupAxisLimits(ImAxis_X1, -timePlot + 10.0, -timePlot, paused ? ImGuiCond_Once : ImGuiCond_Always);
+		ImPlot::SetupAxisLimits(ImAxis_Y1, min, max, paused ? ImGuiCond_Once : ImGuiCond_Always);
+		for (int i = 0; i < 2; ++i) {
+			if (showAnalog[i]) {
+				strcpy_s(label, 32, i ? "real" : "imag");
+				if (dataAnalog[i].Data.size() > 0)
+					ImPlot::PlotLine(label, &dataAnalog[i].Data[0].x, &dataAnalog[i].Data[0].y, dataAnalog[i].Data.size(), dataAnalog[i].Offset, 2 * sizeof(float));
+			}
+		}
+		ImPlot::EndPlot();
+	}
+	ImGui::End();
+}
+
+void fourier::DrawPlotsEpiCyclesScrolling(bool& open)
+{
+	ImGui::Begin("DigitalPlots", &open);
+
+	static bool paused = false;
+	static bool showAnalog[2] = { true, true };
+	static bool flipSign = false;
+	static float prevX = 1.0f;
+	static float min = 100000.0f;
+	static float max = -100000.0f;
+
+	char label[32];
+	ImGui::Checkbox("x", &showAnalog[0]);  ImGui::SameLine();
+	ImGui::Checkbox("y", &showAnalog[1]);
+
+	int len = tracer.Data.Size;
+	ImVec2 finalTip = len > 0 ? ImVec2(tracer.Data[len - 1].x, tracer.Data[len - 1].y) : ImVec2();
+
+	if (!paused) {
+		timePlot += static_cast<float>(PI / plotTimeChangeRate); //ImGui::GetIO().DeltaTime;
+		if (showAnalog[0])
+		{
+			dataAnalog[0].AddPoint(-timePlot, -finalTip.x);
+			if (-finalTip.x > max)
+				max = -finalTip.x;
+			if (-finalTip.x < min)
+				min = -finalTip.x;
+		}
+		if (showAnalog[1])
+		{
+			dataAnalog[1].AddPoint(-timePlot, -finalTip.y);
+			if (-finalTip.y > max)
+				max = -finalTip.y;
+			if (-finalTip.y < min)
+				min = -finalTip.y;
+		}
+	}
+
+	if (ImPlot::BeginPlot("##Digital", ImGui::GetContentRegionAvail())) {
+		ImPlot::SetupAxisLimits(ImAxis_X1, -timePlot + 10.0, -timePlot, paused ? ImGuiCond_Once : ImGuiCond_Always);
+		ImPlot::SetupAxisLimits(ImAxis_Y1, min - 1.0f, max + 1.0f, paused ? ImGuiCond_Once : ImGuiCond_Always);
+		for (int i = 0; i < 2; ++i) {
+			if (showAnalog[i]) {
+				strcpy_s(label, 32, i ? "imag" : "real");
+				if (dataAnalog[i].Data.size() > 0)
+					ImPlot::PlotLine(label, &dataAnalog[i].Data[0].x, &dataAnalog[i].Data[0].y, dataAnalog[i].Data.size(), dataAnalog[i].Offset, 2 * sizeof(float));
+			}
+		}
+		ImPlot::EndPlot();
+	}
+	ImGui::End();
+}
+
+
 void fourier::DrawPlotsTransformScrolling(bool& open) {
 	ImGui::Begin("DigitalPlots", &open);
 
@@ -1230,31 +1352,22 @@ void fourier::Setup()
 
 	// need to restrict max number of frequencies or image gets whacked
 	int maxlen = 1000;
-	if (s > maxlen)
+	std::vector<Complex> tmp;
+	std::vector<float> tmpx;
+	std::vector<float> tmpy;
+	int step = (s / maxlen) + 1;
+	for (int i = 0; i < s; i += step)
 	{
-		std::vector<Complex> tmp;
-		std::vector<float> tmpx;
-		std::vector<float> tmpy;
-		int step = (s / maxlen) + 1;
-		for (int i = 0; i < s; i += step)
+		if (i < data.size())
 		{
-			if (i < data.size())
-			{
-				tmp.push_back(data[i]);
-				tmpx.push_back(data[i].re);
-				tmpy.push_back(data[i].im);
-			}
+			tmp.push_back(data[i]);
+			tmpx.push_back(data[i].re);
+			tmpy.push_back(data[i].im);
 		}
-		Cdft = DFT(tmp, tmp.size());
-		Xdft = DFT(tmpx, tmpx.size());
-		Ydft = DFT(tmpy, tmpy.size());
 	}
-	else
-	{
-		Cdft = DFT(data, s);
-		Xdft = DFT(xdata, s);
-		Ydft = DFT(ydata, s);
-	}
+	Cdft = DFT(tmp, tmp.size());
+	Xdft = DFT(tmpx, tmpx.size());
+	Ydft = DFT(tmpy, tmpy.size());
 
 	std::sort(Xdft.begin(), Xdft.end(), greater_than_key());
 	std::sort(Ydft.begin(), Ydft.end(), greater_than_key());

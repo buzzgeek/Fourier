@@ -630,6 +630,7 @@ private:
 	static std::vector<WaveletStruct>Xdft;
 	static std::vector<WaveletStruct>Ydft;
 	static std::vector<WaveletStruct>Cdft;
+	static ImVector<ImVec2> points;
 
 	static const char* strategies[];
 	static const char* curves[];
@@ -671,6 +672,8 @@ private:
 	void DrawPlots(bool& p_open);
 	void DrawPlotsDemodulate(bool& p_open);
 	void DrawPlotsTransformScrolling(bool& p_open);
+	void DrawPlotsCaptureScrolling(bool& p_open);
+	void DrawPlotsEpiCyclesScrolling(bool& p_open);
 	void DrawBackground(ImDrawList* draw_list, ImVec2 offset);
 	void Clear();
 
